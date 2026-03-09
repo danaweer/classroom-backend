@@ -1,14 +1,57 @@
-import express from "express";
+import { eq } from "drizzle-orm";
+import { db, pool } from "./db";
+import { departments } from "./db/schema";
 
-const app = express();
-const PORT = 8000;
+async function main() {
+  try {
+    console.log("Performing CRUD operations...");
 
-app.use(express.json());
+    const [newDepartment] = await db
+      .insert(departments)
+      .values({
+        code: "CS",
+        name: "Computer Science",
+        description: "Department for computing and software.",
+      })
+      .returning();
 
-app.get("/", (req, res) => {
-  res.status(200).json({ message: "Classroom backend is running." });
-});
+    if (!newDepartment) {
+      throw new Error("Failed to create department");
+    }
 
-app.listen(PORT, () => {
-  console.log(`Server started at http://localhost:${PORT}`);
-});
+    console.log("CREATE:", newDepartment);
+
+    const foundDepartment = await db
+      .select()
+      .from(departments)
+      .where(eq(departments.id, newDepartment.id));
+    console.log("READ:", foundDepartment[0]);
+
+    const [updatedDepartment] = await db
+      .update(departments)
+      .set({ name: "Computer Science & Engineering" })
+      .where(eq(departments.id, newDepartment.id))
+      .returning();
+
+    if (!updatedDepartment) {
+      throw new Error("Failed to update department");
+    }
+
+    console.log("UPDATE:", updatedDepartment);
+
+    await db.delete(departments).where(eq(departments.id, newDepartment.id));
+    console.log("DELETE: Department deleted.");
+
+    console.log("CRUD operations completed successfully.");
+  } catch (error) {
+    console.error("Error performing CRUD operations:", error);
+    process.exit(1);
+  } finally {
+    if (pool) {
+      await pool.end();
+      console.log("Database pool closed.");
+    }
+  }
+}
+
+main();
