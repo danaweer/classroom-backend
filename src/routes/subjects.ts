@@ -2,6 +2,7 @@ import { and, ilike, or, sql, eq, getTableColumns, desc,  } from 'drizzle-orm';
 import express from 'express';
 import { subjects, departments } from '../db/schema';
 import { db } from '../db';
+import { parse } from 'node:path';
 
 const router = express.Router();
 
@@ -10,8 +11,9 @@ router.get('/', async(req, res) => {
     try {
         const { search, department, page = 1, limit = 10 } = req.query;
 
-        const currentPage = Math.max(1, +page);
-        const limitPerPage = Math.max(1, +limit);
+        const currentPage = Math.max(1, parseInt(page as string, 10) || 1); // Ensure currentPage is at least 1
+
+        const limitPerPage = Math.min(Math.max(1, parseInt(String(limit), 10) || 10), 100); // Ensure limitPerPage is between 1 and 100
 
         const offset = (currentPage - 1) * limitPerPage; // Calculate the offset for pagination 
 
@@ -28,9 +30,8 @@ router.get('/', async(req, res) => {
         }
         //if department query is provided, we will search for subjects that belong to departments where the name contains the department term (case-insensitive)
         if (department) {
-            filterConditions.push(
-                ilike(departments.name, `%${department}%`)
-            );
+            const deptPattern = `%${String(department).replace(/[%_]/g, '\\$&')}%`; // Escape % and _ characters for SQL LIKE
+            filterConditions.push(ilike(departments.name, deptPattern));
         }
 
         // Combine all filter conditions using AND
