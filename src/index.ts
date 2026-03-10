@@ -5,6 +5,8 @@ import cors from 'cors';
 const app = express();
 const port = 8000;
 
+if(!process.env.FRONTEND_URL) throw new Error('FRONTEND_URL IS NOT SET IN .ENV FILE')
+
 app.use(cors({
     origin: process.env.FRONTEND_URL , // Allow requests from the frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
